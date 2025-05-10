@@ -1,35 +1,35 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import bcrypt from "bcryptjs";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const { email, password } = await req.json();
 
-  // Find user by email
   const user = await prisma.user.findUnique({ where: { email } });
-
   if (!user || !(await bcrypt.compare(password, user.password))) {
-    return new Response(JSON.stringify({ message: "Invalid credentials" }), {
-      status: 401,
-    });
+    return NextResponse.json(
+      { message: "Invalid credentials" },
+      { status: 401 }
+    );
   }
 
-  // Generate JWT token
   const token = jwt.sign(
     { id: user.id, email: user.email, role: user.role },
-    process.env.JWT_SECRET as string,
+    process.env.JWT_SECRET!,
     { expiresIn: "1h" }
   );
 
-  // Return the user object without the password field
-  const { password: _, ...userWithoutPassword } = user; // Destructure to remove the password field
+  const res = NextResponse.json({ user }, { status: 200 });
 
-  return new Response(
-    JSON.stringify({
-      token,
-      user: userWithoutPassword, // Return the user without the password
-    }),
-    { status: 200 }
-  );
+  // ✅ Set cookie correctly
+  res.cookies.set("token", token, {
+    httpOnly: true,
+    sameSite: "lax",
+    maxAge: 60 * 60, // 1 hour
+    path: "/",
+    secure: process.env.NODE_ENV === "production", // only secure in production
+  });
+
+  return res;
 }

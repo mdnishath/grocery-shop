@@ -9,9 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.2",
     "@prisma/client": "^6.7.0",
     "bcryptjs": "^3.0.2",
+    "formidable": "^3.5.4",
     "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.509.0",
+    "mime": "^4.0.7",
     "next": "15.3.2",
     "prisma": "^6.7.0",
     "react": "^19.0.0",
@@ -20,6 +24,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/formidable": "^3.4.5",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^20",
     "@types/react": "^19",

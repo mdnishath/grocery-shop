@@ -1,52 +1,55 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-// app/api/admin/products/route.ts
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyToken } from "@/lib/auth";
+import { cookies } from "next/headers";
 
+// GET: List all products
 export async function GET() {
-  try {
-    const products = await prisma.product.findMany();
-    return new Response(JSON.stringify({ products }), { status: 200 });
-  } catch (error) {
-    return new Response(
-      JSON.stringify({ message: "Error fetching products" }),
-      { status: 500 }
-    );
-  }
+  const products = await prisma.product.findMany({
+    orderBy: { createdAt: "desc" },
+    include: { category: true },
+  });
+  return NextResponse.json(products);
 }
 
+// POST: Create new product
 export async function POST(req: Request) {
-  const token = req.headers.get("Authorization")?.split(" ")[1];
-  if (!token) {
-    return new Response(JSON.stringify({ message: "Unauthorized" }), {
-      status: 401,
-    });
+  const token = (await cookies()).get("token")?.value;
+  if (!token)
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
+  let user;
+  try {
+    user = verifyToken(token);
+  } catch {
+    return NextResponse.json({ message: "Invalid token" }, { status: 401 });
   }
 
+  if (user.role !== "admin") {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+  }
+
+  const { name, description, price, stock, imageUrl, categoryId } =
+    await req.json();
+
   try {
-    const decoded = verifyToken(token);
-    if (decoded.role !== "admin") {
-      return new Response(JSON.stringify({ message: "Forbidden" }), {
-        status: 403,
-      });
-    }
-
-    const { name, description, price, stock, imageUrl } = await req.json();
-
-    const newProduct = await prisma.product.create({
+    const product = await prisma.product.create({
       data: {
         name,
         description,
         price,
         stock,
         imageUrl,
+        categoryId: typeof categoryId === "number" ? categoryId : null, // ✅ optional
       },
     });
 
-    return new Response(JSON.stringify(newProduct), { status: 201 });
-  } catch (error) {
-    return new Response(JSON.stringify({ message: "Error adding product" }), {
-      status: 500,
-    });
+    return NextResponse.json(product, { status: 201 });
+  } catch (err) {
+    console.error("Product creation failed:", err);
+    return NextResponse.json(
+      { message: "Failed to create product" },
+      { status: 500 }
+    );
   }
 }
